@@ -2,10 +2,13 @@
 
 ## What it does
 - Connects to `ws://<receiver-host>/cmd`
+- Compact main view with current host/zone summary
+- Settings panel for changing/saving receiver host and active zone
 - Controls for Main Zone and Zone 2:
-  - Power toggle
-  - Mute toggle
+  - Icon buttons for power, mute, and refresh
   - Volume slider (dB)
+  - Volume +/- buttons (1 dB per click)
+  - Saved max volume limit (dB) enforced by the widget
   - Input selector
 
 ## Load in Chrome

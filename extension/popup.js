@@ -1,8 +1,13 @@
 const DEFAULT_HOST = "192.168.1.89:8080";
+const DEFAULT_MAX_VOLUME_DB = 0.0;
+const DEFAULT_ZONE = 1;
 
 const state = {
   connected: false,
   host: DEFAULT_HOST,
+  activeZone: DEFAULT_ZONE,
+  maxVolumeDb: DEFAULT_MAX_VOLUME_DB,
+  settingsOpen: false,
   inputs: new Map(),
   inputCount: 0,
   zone: {
@@ -12,6 +17,12 @@ const state = {
 };
 
 const els = {
+  settingsToggle: document.getElementById("settings_toggle"),
+  settingsPanel: document.getElementById("settings_panel"),
+  settingsClose: document.getElementById("settings_close"),
+  saveSettings: document.getElementById("save_settings"),
+  hostSummary: document.getElementById("host_summary"),
+  zoneSummary: document.getElementById("zone_summary"),
   host: document.getElementById("host"),
   connect: document.getElementById("connect"),
   status: document.getElementById("status"),
@@ -19,8 +30,12 @@ const els = {
   power: document.getElementById("power"),
   mute: document.getElementById("mute"),
   refresh: document.getElementById("refresh"),
+  volumeDown: document.getElementById("volume_down"),
   volume: document.getElementById("volume"),
+  volumeUp: document.getElementById("volume_up"),
   volumeValue: document.getElementById("volume_value"),
+  maxVolume: document.getElementById("max_volume"),
+  saveMaxVolume: document.getElementById("save_max_volume"),
   input: document.getElementById("input")
 };
 
@@ -29,7 +44,7 @@ let keepAlive = null;
 let messageFragment = "";
 
 function getActiveZone() {
-  return Number(els.zone.value);
+  return state.activeZone;
 }
 
 function zoneCommand(zoneNumber, suffix) {
@@ -44,9 +59,22 @@ function setStatus(text, connected) {
 
   els.power.disabled = !connected;
   els.mute.disabled = !connected;
+  els.volumeDown.disabled = !connected;
   els.volume.disabled = !connected;
+  els.volumeUp.disabled = !connected;
   els.input.disabled = !connected;
   els.refresh.disabled = !connected;
+}
+
+function zoneLabel(zone) {
+  return zone === 2 ? "Zone 2" : "Main Zone";
+}
+
+function renderContext() {
+  els.hostSummary.textContent = state.host;
+  els.zoneSummary.textContent = zoneLabel(state.activeZone);
+  els.host.value = state.host;
+  els.zone.value = String(state.activeZone);
 }
 
 function renderInputs() {
@@ -66,10 +94,17 @@ function renderInputs() {
 
 function renderZone() {
   const zone = state.zone[getActiveZone()];
-  els.power.textContent = zone.power ? "Power On" : "Power Off";
-  els.mute.textContent = zone.mute ? "Mute On" : "Mute Off";
-  els.volume.value = String(zone.volumeDb);
-  els.volumeValue.value = zone.volumeDb.toFixed(1);
+  els.power.classList.toggle("is-active", zone.power);
+  els.power.setAttribute("aria-pressed", zone.power ? "true" : "false");
+  els.power.textContent = "⏻";
+  els.mute.classList.toggle("is-active", zone.mute);
+  els.mute.setAttribute("aria-pressed", zone.mute ? "true" : "false");
+  els.refresh.textContent = "↻";
+  const displayVolume = Math.min(zone.volumeDb, state.maxVolumeDb);
+  els.volume.value = String(displayVolume);
+  els.volumeValue.value = displayVolume.toFixed(1);
+  els.maxVolume.value = String(state.maxVolumeDb);
+  renderContext();
   renderInputs();
 }
 
@@ -80,6 +115,41 @@ function saveHost(host) {
 function loadHost() {
   const saved = localStorage.getItem("anthemHost");
   return saved && saved.trim().length > 0 ? saved.trim() : DEFAULT_HOST;
+}
+
+function saveZone(zone) {
+  localStorage.setItem("anthemZone", String(zone));
+}
+
+function loadZone() {
+  const saved = Number(localStorage.getItem("anthemZone"));
+  if (saved === 1 || saved === 2) {
+    return saved;
+  }
+  return DEFAULT_ZONE;
+}
+
+function saveMaxVolumeDb(value) {
+  localStorage.setItem("anthemMaxVolumeDb", String(value));
+}
+
+function loadMaxVolumeDb() {
+  const saved = Number(localStorage.getItem("anthemMaxVolumeDb"));
+  if (Number.isFinite(saved)) {
+    return saved;
+  }
+  return DEFAULT_MAX_VOLUME_DB;
+}
+
+function clampVolumeToLimits(value) {
+  const min = Number(els.volume.min);
+  const max = Math.min(Number(els.volume.max), state.maxVolumeDb);
+  return Math.min(max, Math.max(min, value));
+}
+
+function toggleSettings(open) {
+  state.settingsOpen = open;
+  els.settingsPanel.classList.toggle("hidden", !open);
 }
 
 function clearSocketTimers() {
@@ -137,6 +207,63 @@ function queryAll() {
   queryZone(1);
   queryZone(2);
   queryInputs();
+}
+
+function adjustVolumeDb(delta) {
+  const zone = getActiveZone();
+  const current = state.zone[zone].volumeDb;
+  const next = clampVolumeToLimits(current + delta);
+  state.zone[zone].volumeDb = next;
+  renderZone();
+  sendSet(zoneCommand(zone, "VOL"), next.toFixed(1));
+}
+
+function setMaxVolumeDbFromInput() {
+  const parsed = Number(els.maxVolume.value);
+  if (!Number.isFinite(parsed)) {
+    els.maxVolume.value = String(state.maxVolumeDb);
+    return;
+  }
+  const next = Math.min(0, Math.max(-90, parsed));
+  state.maxVolumeDb = next;
+  saveMaxVolumeDb(next);
+  const zone = getActiveZone();
+  if (state.zone[zone].volumeDb > next) {
+    state.zone[zone].volumeDb = next;
+    renderZone();
+    if (state.connected) {
+      sendSet(zoneCommand(zone, "VOL"), next.toFixed(1));
+    }
+    return;
+  }
+  renderZone();
+}
+
+function saveSettingsFromInputs() {
+  const host = (els.host.value || "").trim() || DEFAULT_HOST;
+  const zone = Number(els.zone.value) === 2 ? 2 : 1;
+  const hostChanged = host !== state.host;
+  const zoneChanged = zone !== state.activeZone;
+
+  state.host = host;
+  state.activeZone = zone;
+  saveHost(host);
+  saveZone(zone);
+  renderZone();
+
+  if (hostChanged) {
+    connect();
+    return;
+  }
+  if (state.connected && zoneChanged) {
+    queryZone(state.activeZone);
+  }
+}
+
+function toggleMuteForActiveZone() {
+  const zone = getActiveZone();
+  const next = state.zone[zone].mute ? 0 : 1;
+  sendSet(zoneCommand(zone, "MUT"), next);
 }
 
 function parseMessageLine(line) {
@@ -215,9 +342,7 @@ function handleSocketMessage(data) {
 }
 
 function connect() {
-  const host = els.host.value.trim() || DEFAULT_HOST;
-  saveHost(host);
-  state.host = host;
+  const host = state.host || DEFAULT_HOST;
 
   safeCloseSocket();
   setStatus("Connecting...", false);
@@ -248,13 +373,26 @@ function connect() {
 }
 
 function wireEvents() {
-  els.connect.addEventListener("click", connect);
-
-  els.zone.addEventListener("change", () => {
+  els.connect.addEventListener("click", () => {
+    state.host = (els.host.value || "").trim() || DEFAULT_HOST;
+    state.activeZone = Number(els.zone.value) === 2 ? 2 : 1;
+    saveHost(state.host);
+    saveZone(state.activeZone);
     renderZone();
-    if (state.connected) {
-      queryZone(getActiveZone());
-    }
+    connect();
+  });
+
+  els.settingsToggle.addEventListener("click", () => {
+    toggleSettings(!state.settingsOpen);
+  });
+
+  els.settingsClose.addEventListener("click", () => {
+    toggleSettings(false);
+  });
+
+  els.saveSettings.addEventListener("click", () => {
+    saveSettingsFromInputs();
+    toggleSettings(false);
   });
 
   els.power.addEventListener("click", () => {
@@ -264,9 +402,7 @@ function wireEvents() {
   });
 
   els.mute.addEventListener("click", () => {
-    const zone = getActiveZone();
-    const next = state.zone[zone].mute ? 0 : 1;
-    sendSet(zoneCommand(zone, "MUT"), next);
+    toggleMuteForActiveZone();
   });
 
   els.volume.addEventListener("input", () => {
@@ -275,8 +411,26 @@ function wireEvents() {
 
   els.volume.addEventListener("change", () => {
     const zone = getActiveZone();
-    const value = Number(els.volume.value).toFixed(1);
+    const value = clampVolumeToLimits(Number(els.volume.value)).toFixed(1);
+    state.zone[zone].volumeDb = Number(value);
+    renderZone();
     sendSet(zoneCommand(zone, "VOL"), value);
+  });
+
+  els.volumeDown.addEventListener("click", () => {
+    adjustVolumeDb(-1);
+  });
+
+  els.volumeUp.addEventListener("click", () => {
+    adjustVolumeDb(1);
+  });
+
+  els.saveMaxVolume.addEventListener("click", () => {
+    setMaxVolumeDbFromInput();
+  });
+
+  els.maxVolume.addEventListener("change", () => {
+    setMaxVolumeDbFromInput();
   });
 
   els.input.addEventListener("change", () => {
@@ -285,16 +439,41 @@ function wireEvents() {
   });
 
   els.refresh.addEventListener("click", () => {
-    queryAll();
+    queryZone(getActiveZone());
+    queryInputs();
   });
 
   window.addEventListener("beforeunload", () => {
     safeCloseSocket();
   });
+
+  window.addEventListener("keydown", (event) => {
+    if (!state.connected) {
+      return;
+    }
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+    ) {
+      return;
+    }
+    if (event.key.toLowerCase() === "m") {
+      event.preventDefault();
+      toggleMuteForActiveZone();
+    }
+  });
 }
 
 function init() {
-  els.host.value = loadHost();
+  state.host = loadHost();
+  state.activeZone = loadZone();
+  state.maxVolumeDb = loadMaxVolumeDb();
+  renderContext();
+  toggleSettings(false);
   setStatus("Disconnected", false);
   renderZone();
   wireEvents();
