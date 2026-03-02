@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Anthem Receiver Controls",
+  "version": "0.1.0",
+  "description": "Simple power, mute, volume, and input controls for Anthem receivers.",
+  "action": {
+    "default_title": "Anthem Controls",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*",
+    "ws://*/*",
+    "wss://*/*"
+  ]
+}
