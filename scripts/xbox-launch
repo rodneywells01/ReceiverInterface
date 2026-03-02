@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+BRIDGE_DIR="$ROOT_DIR/xbox-bridge"
+CHROME_APP="${CHROME_APP:-Google Chrome}"
+
+usage() {
+  cat <<'USAGE'
+Usage: xbox-launch <command>
+
+Commands:
+  bridge   Start the local Xbox SmartGlass bridge
+  ui       Open the ReceiverInterface extension popup (if extension ID is set)
+  both     Start bridge in a new Terminal tab/window and open the extension popup
+USAGE
+}
+
+open_ui() {
+  local ext_id="${RECEIVERINTERFACE_EXTENSION_ID:-}"
+
+  if [[ -z "$ext_id" ]]; then
+    echo "RECEIVERINTERFACE_EXTENSION_ID is not set."
+    echo "Opening chrome://extensions so you can copy your extension ID."
+    open -a "$CHROME_APP" "chrome://extensions/"
+    echo "Then run: export RECEIVERINTERFACE_EXTENSION_ID=<your_extension_id>"
+    return 0
+  fi
+
+  open -a "$CHROME_APP" "chrome-extension://${ext_id}/popup.html"
+}
+
+start_bridge() {
+  cd "$BRIDGE_DIR"
+  npm start
+}
+
+start_bridge_new_terminal() {
+  local cmd="cd '$BRIDGE_DIR' && npm start"
+
+  if command -v osascript >/dev/null 2>&1; then
+    osascript <<OSA
+ tell application "Terminal"
+   activate
+   do script "$cmd"
+ end tell
+OSA
+  else
+    echo "osascript not found; run this in another shell: $cmd"
+  fi
+}
+
+main() {
+  local command="${1:-help}"
+
+  case "$command" in
+    bridge)
+      start_bridge
+      ;;
+    ui)
+      open_ui
+      ;;
+    both)
+      start_bridge_new_terminal
+      open_ui
+      ;;
+    *)
+      usage
+      ;;
+  esac
+}
+
+main "$@"
