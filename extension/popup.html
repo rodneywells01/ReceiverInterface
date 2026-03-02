@@ -36,19 +36,45 @@
         <h2>Settings</h2>
         <button id="settings_close" class="icon-only" title="Close settings" aria-label="Close settings">✕</button>
       </div>
-      <label for="host">Receiver Host</label>
-      <div class="row">
-        <input id="host" type="text" value="192.168.1.89:8080" />
-      </div>
+      <section class="settings-section">
+        <h3>Receiver Settings</h3>
+        <p class="settings-help">Used for Anthem connection and zone control.</p>
 
-      <label for="zone">Zone</label>
-      <select id="zone">
-        <option value="1">Main Zone</option>
-        <option value="2">Zone 2</option>
-      </select>
+        <label for="host">Receiver Host</label>
+        <div class="row">
+          <input id="host" type="text" value="192.168.1.89:8080" />
+        </div>
 
-      <div class="row">
-        <button id="save_settings">Save Settings</button>
+        <label for="zone">Zone</label>
+        <select id="zone">
+          <option value="1">Main Zone</option>
+          <option value="2">Zone 2</option>
+        </select>
+      </section>
+
+      <section class="settings-section">
+        <h3>Xbox Settings</h3>
+        <p class="settings-help">Optional bridge + console controls (only used on Xbox input).</p>
+
+        <label for="xbox_host">Xbox Host</label>
+        <div class="row">
+          <input id="xbox_host" type="text" placeholder="192.168.1.120" />
+        </div>
+
+        <label for="xbox_live_id">Xbox Live Device ID (for Power On)</label>
+        <div class="row">
+          <input id="xbox_live_id" type="text" placeholder="FD00000000000000" />
+          <button id="discover_xbox_live_id" type="button">Discover ID</button>
+        </div>
+
+        <label for="xbox_bridge_url">Xbox Bridge URL</label>
+        <div class="row">
+          <input id="xbox_bridge_url" type="text" value="http://127.0.0.1:8765" />
+        </div>
+      </section>
+
+      <div class="row settings-actions">
+        <button id="save_settings">Save All Settings</button>
         <button id="connect">Connect</button>
       </div>
     </section>
@@ -84,6 +110,53 @@
     <section class="card">
       <label for="input">Input</label>
       <select id="input"></select>
+    </section>
+
+    <section id="xbox_controls_card" class="card hidden">
+      <div class="xbox-title-row">
+        <h2>Xbox Controls</h2>
+        <span id="xbox_status" class="xbox-status">Idle</span>
+      </div>
+      <div class="xbox-round-row">
+        <button type="button" class="xbox-action xbox-round xbox-power-on" data-xbox-action="power_on" aria-label="Xbox Power On" title="Power On: wakes/turns on the Xbox (requires Live Device ID)">⏻</button>
+        <button type="button" class="xbox-action xbox-round xbox-home" data-xbox-action="nexus" aria-label="Xbox Home" title="Home: open the Xbox guide/home menu">Ⓧ</button>
+        <button type="button" class="xbox-action xbox-round xbox-power-off" data-xbox-action="power_off" aria-label="Xbox Power Off" title="Power Off: turns off the Xbox console">⏻</button>
+      </div>
+
+      <div class="xbox-controller">
+        <div class="xbox-dpad">
+          <div></div>
+          <button type="button" class="xbox-action xbox-dpad-btn" data-xbox-action="up" aria-label="Up" title="D-pad Up: move selection up">▲</button>
+          <div></div>
+          <button type="button" class="xbox-action xbox-dpad-btn" data-xbox-action="left" aria-label="Left" title="D-pad Left: move selection left">◀</button>
+          <button type="button" class="xbox-action xbox-dpad-btn xbox-dpad-center" data-xbox-action="a" aria-label="Select" title="Select: press A/confirm">●</button>
+          <button type="button" class="xbox-action xbox-dpad-btn" data-xbox-action="right" aria-label="Right" title="D-pad Right: move selection right">▶</button>
+          <div></div>
+          <button type="button" class="xbox-action xbox-dpad-btn" data-xbox-action="down" aria-label="Down" title="D-pad Down: move selection down">▼</button>
+          <div></div>
+        </div>
+
+        <div class="xbox-face">
+          <div></div>
+          <button type="button" class="xbox-action xbox-face-btn xbox-face-y" data-xbox-action="y" aria-label="Y" title="Y button">Y</button>
+          <div></div>
+          <button type="button" class="xbox-action xbox-face-btn xbox-face-x" data-xbox-action="x" aria-label="X" title="X button">X</button>
+          <div></div>
+          <button type="button" class="xbox-action xbox-face-btn xbox-face-b" data-xbox-action="b" aria-label="B" title="B button: back/cancel">B</button>
+          <div></div>
+          <button type="button" class="xbox-action xbox-face-btn xbox-face-a" data-xbox-action="a" aria-label="A" title="A button: select/confirm">A</button>
+          <div></div>
+        </div>
+      </div>
+
+      <div class="xbox-row">
+        <button type="button" class="xbox-action xbox-meta" data-xbox-action="view" aria-label="View" title="View button">▢ View</button>
+        <button type="button" class="xbox-action xbox-meta" data-xbox-action="menu" aria-label="Menu" title="Menu button">≡ Menu</button>
+      </div>
+      <div class="xbox-row">
+        <button type="button" class="xbox-action xbox-meta" data-xbox-action="play" aria-label="Play" title="Play media">▶ Play</button>
+        <button type="button" class="xbox-action xbox-meta" data-xbox-action="pause" aria-label="Pause" title="Pause media">⏸ Pause</button>
+      </div>
     </section>
   </main>
 
