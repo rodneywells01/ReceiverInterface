@@ -237,6 +237,26 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === "DELETE" && req.url === "/session") {
+    try {
+      const body = await parseJsonBody(req);
+      const xboxHost = normalizeXboxHost(body.xboxHost);
+      if (!xboxHost) {
+        sendJson(res, 400, { ok: false, error: "Missing xboxHost" });
+        return;
+      }
+      const session = sessions.get(xboxHost);
+      if (session && session.client) {
+        try { session.client.disconnect(); } catch (_) {}
+      }
+      const existed = sessions.delete(xboxHost);
+      sendJson(res, 200, { ok: true, deleted: existed, xboxHost });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: error && error.message ? error.message : String(error) });
+    }
+    return;
+  }
+
   if (req.method !== "POST" || req.url !== "/command") {
     sendJson(res, 404, {
       ok: false,
