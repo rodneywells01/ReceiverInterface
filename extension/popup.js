@@ -1,6 +1,7 @@
 const DEFAULT_HOST = "192.168.1.89:8080";
 const DEFAULT_MAX_VOLUME_DB = 0.0;
 const DEFAULT_ZONE = 1;
+const DEFAULT_XBOX_BRIDGE_URL = "http://127.0.0.1:8765";
 
 const state = {
   connected: false,
@@ -10,6 +11,13 @@ const state = {
   settingsOpen: false,
   inputs: new Map(),
   inputCount: 0,
+  xbox: {
+    host: "",
+    liveId: "",
+    bridgeUrl: DEFAULT_XBOX_BRIDGE_URL,
+    busy: false,
+    status: "Idle"
+  },
   zone: {
     1: { power: false, mute: false, volumeDb: -35.0, input: 1 },
     2: { power: false, mute: false, volumeDb: -35.0, input: 1 }
@@ -27,6 +35,10 @@ const els = {
   connect: document.getElementById("connect"),
   status: document.getElementById("status"),
   zone: document.getElementById("zone"),
+  xboxHost: document.getElementById("xbox_host"),
+  xboxLiveId: document.getElementById("xbox_live_id"),
+  discoverXboxLiveId: document.getElementById("discover_xbox_live_id"),
+  xboxBridgeUrl: document.getElementById("xbox_bridge_url"),
   power: document.getElementById("power"),
   mute: document.getElementById("mute"),
   refresh: document.getElementById("refresh"),
@@ -36,7 +48,10 @@ const els = {
   volumeValue: document.getElementById("volume_value"),
   maxVolume: document.getElementById("max_volume"),
   saveMaxVolume: document.getElementById("save_max_volume"),
-  input: document.getElementById("input")
+  input: document.getElementById("input"),
+  xboxControlsCard: document.getElementById("xbox_controls_card"),
+  xboxStatus: document.getElementById("xbox_status"),
+  xboxActions: Array.from(document.querySelectorAll(".xbox-action"))
 };
 
 let socket = null;
@@ -64,6 +79,10 @@ function setStatus(text, connected) {
   els.volumeUp.disabled = !connected;
   els.input.disabled = !connected;
   els.refresh.disabled = !connected;
+  if (!connected) {
+    state.xbox.busy = false;
+  }
+  renderXboxControls();
 }
 
 function zoneLabel(zone) {
@@ -75,6 +94,9 @@ function renderContext() {
   els.zoneSummary.textContent = zoneLabel(state.activeZone);
   els.host.value = state.host;
   els.zone.value = String(state.activeZone);
+  els.xboxHost.value = state.xbox.host;
+  els.xboxLiveId.value = state.xbox.liveId;
+  els.xboxBridgeUrl.value = state.xbox.bridgeUrl;
 }
 
 function renderInputs() {
@@ -90,6 +112,38 @@ function renderInputs() {
   }
 
   els.input.value = String(selected);
+  renderXboxControls();
+}
+
+function getActiveInputName() {
+  const zone = state.zone[getActiveZone()];
+  const known = state.inputs.get(zone.input);
+  if (known) {
+    return known.trim();
+  }
+  const selectedOption = els.input.selectedOptions[0];
+  if (selectedOption) {
+    return selectedOption.textContent.trim();
+  }
+  return "";
+}
+
+function isXboxInputActive() {
+  return getActiveInputName().toLowerCase() === "xbox";
+}
+
+function setXboxStatus(text) {
+  state.xbox.status = text;
+  els.xboxStatus.textContent = text;
+}
+
+function renderXboxControls() {
+  const visible = state.connected && isXboxInputActive();
+  els.xboxControlsCard.classList.toggle("hidden", !visible);
+  for (const button of els.xboxActions) {
+    button.disabled = state.xbox.busy;
+  }
+  setXboxStatus(state.xbox.status);
 }
 
 function renderZone() {
@@ -106,6 +160,7 @@ function renderZone() {
   els.maxVolume.value = String(state.maxVolumeDb);
   renderContext();
   renderInputs();
+  renderXboxControls();
 }
 
 function saveHost(host) {
@@ -139,6 +194,51 @@ function loadMaxVolumeDb() {
     return saved;
   }
   return DEFAULT_MAX_VOLUME_DB;
+}
+
+function normalizeBridgeUrl(value) {
+  const trimmed = (value || "").trim();
+  if (!trimmed) {
+    return DEFAULT_XBOX_BRIDGE_URL;
+  }
+  return trimmed.replace(/\/+$/, "");
+}
+
+function normalizeXboxHost(value) {
+  let host = (value || "").trim();
+  if (!host) {
+    return "";
+  }
+
+  try {
+    if (host.includes("://")) {
+      host = new URL(host).hostname;
+    }
+  } catch (_error) {
+    // Keep original value if URL parsing fails.
+  }
+
+  if (host.includes("/")) {
+    host = host.split("/")[0];
+  }
+  if (host.includes(":") && host.indexOf(":") === host.lastIndexOf(":")) {
+    host = host.split(":")[0];
+  }
+  return host.trim();
+}
+
+function saveXboxSettings() {
+  localStorage.setItem("anthemXboxHost", state.xbox.host);
+  localStorage.setItem("anthemXboxLiveId", state.xbox.liveId);
+  localStorage.setItem("anthemXboxBridgeUrl", state.xbox.bridgeUrl);
+}
+
+function loadXboxSettings() {
+  return {
+    host: (localStorage.getItem("anthemXboxHost") || "").trim(),
+    liveId: (localStorage.getItem("anthemXboxLiveId") || "").trim(),
+    bridgeUrl: normalizeBridgeUrl(localStorage.getItem("anthemXboxBridgeUrl"))
+  };
 }
 
 function clampVolumeToLimits(value) {
@@ -242,13 +342,20 @@ function setMaxVolumeDbFromInput() {
 function saveSettingsFromInputs() {
   const host = (els.host.value || "").trim() || DEFAULT_HOST;
   const zone = Number(els.zone.value) === 2 ? 2 : 1;
+  const xboxHost = normalizeXboxHost(els.xboxHost.value);
+  const xboxLiveId = (els.xboxLiveId.value || "").trim();
+  const xboxBridgeUrl = normalizeBridgeUrl(els.xboxBridgeUrl.value);
   const hostChanged = host !== state.host;
   const zoneChanged = zone !== state.activeZone;
 
   state.host = host;
   state.activeZone = zone;
+  state.xbox.host = xboxHost;
+  state.xbox.liveId = xboxLiveId;
+  state.xbox.bridgeUrl = xboxBridgeUrl;
   saveHost(host);
   saveZone(zone);
+  saveXboxSettings();
   renderZone();
 
   if (hostChanged) {
@@ -264,6 +371,94 @@ function toggleMuteForActiveZone() {
   const zone = getActiveZone();
   const next = state.zone[zone].mute ? 0 : 1;
   sendSet(zoneCommand(zone, "MUT"), next);
+}
+
+async function discoverXboxLiveId() {
+  const xboxHost = normalizeXboxHost(els.xboxHost.value);
+  const bridgeUrl = normalizeBridgeUrl(els.xboxBridgeUrl.value);
+  if (!xboxHost) {
+    setXboxStatus("Set Xbox host first");
+    return;
+  }
+
+  state.xbox.busy = true;
+  els.discoverXboxLiveId.disabled = true;
+  setXboxStatus("Discovering Live ID...");
+  renderXboxControls();
+
+  try {
+    const response = await fetch(`${bridgeUrl}/discover`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ xboxHost })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (response.status === 404) {
+      throw new Error("Bridge missing /discover. Restart bridge from latest code.");
+    }
+    if (!response.ok || !payload.ok || !payload.liveId) {
+      const detail = payload.error || payload.message || `HTTP ${response.status}`;
+      throw new Error(detail);
+    }
+
+    state.xbox.host = xboxHost;
+    state.xbox.bridgeUrl = bridgeUrl;
+    state.xbox.liveId = String(payload.liveId).trim();
+    els.xboxLiveId.value = state.xbox.liveId;
+    els.xboxHost.value = state.xbox.host;
+    els.xboxBridgeUrl.value = state.xbox.bridgeUrl;
+    saveXboxSettings();
+    setXboxStatus(`Live ID found: ${state.xbox.liveId}`);
+  } catch (error) {
+    setXboxStatus(`Discover failed: ${error.message}`);
+  } finally {
+    state.xbox.busy = false;
+    els.discoverXboxLiveId.disabled = false;
+    renderXboxControls();
+  }
+}
+
+async function sendXboxCommand(action) {
+  if (!state.xbox.host) {
+    setXboxStatus("Set Xbox host in Settings");
+    return;
+  }
+  if (action === "power_on" && !state.xbox.liveId) {
+    setXboxStatus("Set Xbox Live ID for Power On");
+    return;
+  }
+
+  state.xbox.busy = true;
+  setXboxStatus(`Sending ${action}...`);
+  renderXboxControls();
+
+  try {
+    const response = await fetch(`${state.xbox.bridgeUrl}/command`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action,
+        xboxHost: state.xbox.host,
+        liveId: state.xbox.liveId
+      })
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.ok) {
+      const detail = payload.error || payload.message || `HTTP ${response.status}`;
+      throw new Error(detail);
+    }
+    setXboxStatus(`OK: ${action}`);
+  } catch (error) {
+    setXboxStatus(`Error: ${error.message}`);
+  } finally {
+    state.xbox.busy = false;
+    renderXboxControls();
+  }
 }
 
 function parseMessageLine(line) {
@@ -395,6 +590,10 @@ function wireEvents() {
     toggleSettings(false);
   });
 
+  els.discoverXboxLiveId.addEventListener("click", () => {
+    discoverXboxLiveId();
+  });
+
   els.power.addEventListener("click", () => {
     const zone = getActiveZone();
     const next = state.zone[zone].power ? 0 : 1;
@@ -435,6 +634,8 @@ function wireEvents() {
 
   els.input.addEventListener("change", () => {
     const zone = getActiveZone();
+    state.zone[zone].input = Number(els.input.value);
+    renderZone();
     sendSet(zoneCommand(zone, "INP"), Number(els.input.value));
   });
 
@@ -466,15 +667,30 @@ function wireEvents() {
       toggleMuteForActiveZone();
     }
   });
+
+  for (const button of els.xboxActions) {
+    button.addEventListener("click", () => {
+      const action = button.dataset.xboxAction;
+      if (!action) {
+        return;
+      }
+      sendXboxCommand(action);
+    });
+  }
 }
 
 function init() {
   state.host = loadHost();
   state.activeZone = loadZone();
   state.maxVolumeDb = loadMaxVolumeDb();
+  state.xbox = {
+    ...state.xbox,
+    ...loadXboxSettings()
+  };
   renderContext();
   toggleSettings(false);
   setStatus("Disconnected", false);
+  setXboxStatus("Idle");
   renderZone();
   wireEvents();
   connect();

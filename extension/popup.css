@@ -116,6 +116,35 @@ label {
   letter-spacing: 0.2px;
 }
 
+.settings-section {
+  border: 1px solid #d9e1f2;
+  border-radius: 10px;
+  background: rgba(246, 249, 255, 0.75);
+  padding: 9px;
+}
+
+.settings-section + .settings-section {
+  margin-top: 8px;
+}
+
+.settings-section h3 {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  color: #334a78;
+}
+
+.settings-help {
+  margin: 3px 0 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.settings-actions {
+  margin-top: 8px;
+}
+
 input,
 select,
 button {
@@ -151,6 +180,7 @@ button:hover:not(:disabled) {
 }
 
 #connect,
+#discover_xbox_live_id,
 #save_max_volume,
 #save_settings {
   background: var(--accent);
@@ -159,10 +189,16 @@ button:hover:not(:disabled) {
 }
 
 #connect:hover:not(:disabled),
+#discover_xbox_live_id:hover:not(:disabled),
 #save_max_volume:hover:not(:disabled),
 #save_settings:hover:not(:disabled) {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
+}
+
+#discover_xbox_live_id {
+  flex: 0 0 94px;
+  white-space: nowrap;
 }
 
 button:disabled,
@@ -299,4 +335,170 @@ select:disabled {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   color: #23365f;
+}
+
+.xbox-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.xbox-title-row h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+
+.xbox-status {
+  font-size: 11px;
+  color: var(--muted);
+  max-width: 200px;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xbox-action {
+  font-weight: 700;
+  position: relative;
+}
+
+.xbox-action[title]:hover:not(:disabled)::after,
+.xbox-action[title]:focus-visible:not(:disabled)::after {
+  content: attr(title);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: 190px;
+  width: max-content;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #f8fafc;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.28);
+}
+
+.xbox-action[title]:hover:not(:disabled)::before,
+.xbox-action[title]:focus-visible:not(:disabled)::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 3px);
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #1e293b;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.xbox-round-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.xbox-round {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xbox-power-on {
+  color: #16a34a;
+  border-color: #83d8a2;
+  background: #ecfdf3;
+}
+
+.xbox-power-off {
+  color: #dc2626;
+  border-color: #f0a8a8;
+  background: #fff1f1;
+}
+
+.xbox-home {
+  color: #1d4ed8;
+  border-color: #9cb7f0;
+  background: #eef4ff;
+}
+
+.xbox-controller {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.xbox-dpad,
+.xbox-face {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.xbox-dpad-btn {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  padding: 0;
+  font-size: 14px;
+  background: #f6f8ff;
+}
+
+.xbox-dpad-center {
+  font-size: 10px;
+}
+
+.xbox-face-btn {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 14px;
+  color: #fff;
+  border: none;
+}
+
+.xbox-face-a {
+  background: #16a34a;
+}
+
+.xbox-face-b {
+  background: #dc2626;
+}
+
+.xbox-face-x {
+  background: #2563eb;
+}
+
+.xbox-face-y {
+  background: #f59e0b;
+}
+
+.xbox-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.xbox-meta {
+  font-size: 12px;
+  padding: 6px 7px;
+  background: #f6f8ff;
 }
